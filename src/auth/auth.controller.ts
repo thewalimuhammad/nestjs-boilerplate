@@ -86,7 +86,6 @@ export class AuthController {
           data: {},
         });
       }
-      console.log(user);
       const isPasswordMatched = await bcrypt.compare(
         body.password,
         user.password,
@@ -228,11 +227,10 @@ export class AuthController {
   @Get('/verify-token')
   @UseGuards(JwtAuthGuard)
   async verifyToken(@Req() req, @Res() res) {
-    const user = await this.userModel.findById(req.user.id);
-    const { password, ...userWithoutPassword } = user.toObject();
+    const user = await this.userModel.findById(req.user.id).select('-password');
     return res.status(HttpStatus.OK).send({
       message: 'Token verified',
-      data: userWithoutPassword,
+      data: user,
     });
   }
 }
