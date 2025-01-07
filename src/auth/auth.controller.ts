@@ -53,19 +53,17 @@ export class AuthController {
         isVerified: false,
       };
       const userExistNotVerified = await this.userModel.findOne(queryUser);
-      const setOTP = await this.authService.sendMail(body);
-      console.log(setOTP.otp);
+      await this.authService.sendSignupEmail(body);
       if (userExistNotVerified) {
         await this.userModel.updateOne({ email: body.email }, body);
         return res.status(HttpStatus.CREATED).send({
-          message:
-            'User registered successfully please verify OTP sent to email',
+          message: 'Verify Pin sent to email please verify email',
           data: {},
         });
       }
       await this.userModel.create(body);
       return res.status(HttpStatus.CREATED).send({
-        message: 'User registered successfully please verify OTP sent to email',
+        message: 'Verify Pin sent to email please verify email',
         data: {},
       });
     } catch (error) {
@@ -78,15 +76,17 @@ export class AuthController {
     try {
       const query = {
         email: body.email,
+        isVerified: true,
         isDeleted: false,
       };
       const user = await this.userModel.findOne(query);
       if (!user) {
         return res.status(HttpStatus.NOT_FOUND).send({
-          message: 'incorrect credential.',
+          message: 'User not exits',
           data: {},
         });
       }
+      console.log(user);
       const isPasswordMatched = await bcrypt.compare(
         body.password,
         user.password,
@@ -97,7 +97,7 @@ export class AuthController {
           data: {},
         });
       }
-      const token = this.authService.signToken(user._id);
+      const token = this.authService.signToken(user._id.toString());
       return res.status(HttpStatus.OK).send({
         message: 'Logged in successfully',
         data: { token: token },
@@ -118,10 +118,10 @@ export class AuthController {
           data: {},
         });
       }
-      const setOTP = await this.authService.sendMail(body);
-      console.log(setOTP.otp);
+      await this.authService.sendForgotEmail(body);
+
       return res.status(HttpStatus.OK).send({
-        message: 'User Found and OTP sent to email',
+        message: 'User Found and Pin sent to email',
         data: {},
       });
     } catch (error) {
@@ -154,7 +154,7 @@ export class AuthController {
           data: {},
         });
       }
-      const token = this.authService.signToken(user._id);
+      const token = this.authService.signToken(user._id.toString());
       await this.userModel.updateOne(
         { _id: user._id },
         { $set: { isVerified: true } },
@@ -228,9 +228,11 @@ export class AuthController {
   @Get('/verify-token')
   @UseGuards(JwtAuthGuard)
   async verifyToken(@Req() req, @Res() res) {
+    const user = await this.userModel.findById(req.user.id);
+    const { password, ...userWithoutPassword } = user.toObject();
     return res.status(HttpStatus.OK).send({
       message: 'Token verified',
-      data: req.user,
+      data: userWithoutPassword,
     });
   }
 }

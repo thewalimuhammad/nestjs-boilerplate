@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { mongooseFeatures } from 'src/config/mongoose-features.config';
+import { EmailsModule } from 'src/common/emails/emails.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { mongooseFeatures } from 'src/config/mongoose-features.config';
       secret: process.env.JWT_SECRET_KEY,
       signOptions: { expiresIn: process.env.JWT_EXPIRATION },
     }),
+    EmailsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

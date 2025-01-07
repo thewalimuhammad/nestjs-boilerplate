@@ -8,7 +8,7 @@ export default class Auth {
   @Prop()
   otp: number;
 
-  @Prop({ default: Date.now, expires: '60s' })
+  @Prop({ default: Date.now, expires: process.env.OTP_EXPIRATION })
   expiresAt: Date;
 }
 

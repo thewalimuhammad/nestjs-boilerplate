@@ -6,15 +6,17 @@ import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import Auth from './entities/auth.entity';
 import { verifyOTPDto } from './dto/verify-otp.dto';
+import { EmailsService } from 'src/common/emails/emails.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel('Auth') private readonly authModel: Model<Auth>,
     private jwtService: JwtService,
+    private emailsService: EmailsService,
   ) {}
 
-  signToken(id) {
+  signToken(id: string) {
     return this.jwtService.sign(
       { id },
       {
@@ -24,12 +26,33 @@ export class AuthService {
     );
   }
 
-  async sendMail(body: CreateAuthDto) {
+  async sendSignupEmail(body: CreateAuthDto) {
     try {
       const otp = this.generateOTP();
       await this.authModel.findOneAndDelete({ email: body.email });
-      const userOTP = await this.authModel.create({ email: body.email, otp });
-      return userOTP;
+      await this.authModel.create({ email: body.email, otp });
+      const emailSent = await this.emailsService.SignupEmail({
+        name: body.name,
+        email: body.email,
+        otp: otp,
+      });
+      return emailSent;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async sendForgotEmail(body: CreateAuthDto) {
+    try {
+      const otp = this.generateOTP();
+      await this.authModel.findOneAndDelete({ email: body.email });
+      await this.authModel.create({ email: body.email, otp });
+      const emailSent = await this.emailsService.forgetPasswordEmail({
+        name: body.name,
+        email: body.email,
+        otp: otp,
+      });
+      return emailSent;
     } catch (error) {
       throw error;
     }
