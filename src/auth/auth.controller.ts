@@ -190,6 +190,30 @@ export class AuthController {
     }
   }
 
+  @Get('/verify-token')
+  @UseGuards(JwtAuthGuard)
+  async verifyToken(@Req() req, @Res() res) {
+    const user = await this.userModel.findById(req.user.id).select('-password');
+    return res.status(HttpStatus.OK).send({
+      message: 'Token verified',
+      data: user,
+    });
+  }
+
+  @Patch('/update-profile')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(@Body() body: UserSignUpDto, @Req() req, @Res() res) {
+    try {
+      await this.userModel.findByIdAndUpdate(req.user.id, body);
+      return res.status(HttpStatus.OK).send({
+        message: 'Profile updated successfully',
+        data: {},
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   @Patch('/update-password')
   @UseGuards(JwtAuthGuard)
   async updatePassword(
@@ -222,15 +246,5 @@ export class AuthController {
       console.log('error', error);
       throw error;
     }
-  }
-
-  @Get('/verify-token')
-  @UseGuards(JwtAuthGuard)
-  async verifyToken(@Req() req, @Res() res) {
-    const user = await this.userModel.findById(req.user.id).select('-password');
-    return res.status(HttpStatus.OK).send({
-      message: 'Token verified',
-      data: user,
-    });
   }
 }
