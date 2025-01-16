@@ -23,6 +23,7 @@ import { ForgetPasswordDto } from './dto/forget-password.dto';
 import { verifyOTPDto } from './dto/verify-otp.dto';
 import { resetPasswordDto } from './dto/reset-password.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { UpdateEmailDto } from './dto/update-email.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -200,6 +201,46 @@ export class AuthController {
     });
   }
 
+  @Patch('/update-email')
+  @UseGuards(JwtAuthGuard)
+  async updateEmail(@Body() body: UpdateEmailDto, @Req() req, @Res() res) {
+    try {
+      const query = { email: body.newEmail, isDeleted: false };
+      const userExist = await this.userModel.findOne(query);
+      if (userExist) {
+        return res.status(HttpStatus.BAD_REQUEST).send({
+          message: 'Email already registered.',
+          data: {},
+        });
+      }
+      const currentUser = await this.userModel.findById(req.user.id);
+      const isPasswordMatched = await bcrypt.compare(
+        body.password,
+        currentUser.password,
+      );
+      if (!isPasswordMatched) {
+        return res.status(HttpStatus.BAD_REQUEST).send({
+          message: 'Incorrect password',
+          data: {},
+        });
+      }
+      await this.authService.sendUpdateEmail({
+        name: currentUser.name,
+        email: currentUser.email,
+        newEmail: body.newEmail,
+      });
+      const user = await this.userModel
+        .findByIdAndUpdate(req.user.id, { email: body.newEmail }, { new: true })
+        .select('-password');
+      return res.status(HttpStatus.OK).send({
+        message: 'Email updated successfully',
+        data: { user },
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
   @Patch('/update-profile')
   @UseGuards(JwtAuthGuard)
   async updateProfile(@Body() body: UserSignUpDto, @Req() req, @Res() res) {
@@ -236,6 +277,10 @@ export class AuthController {
           data: {},
         });
       }
+      await this.authService.sendUpdatePasswordEmail({
+        name: user.name,
+        email: user.email,
+      });
       user.password = body.newPassword;
       await user.save();
       return res.status(HttpStatus.OK).send({

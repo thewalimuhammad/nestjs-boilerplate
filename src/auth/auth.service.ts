@@ -58,6 +58,31 @@ export class AuthService {
     }
   }
 
+  async sendUpdateEmail(body: any) {
+    try {
+      const emailSent = await this.emailsService.updateEmail({
+        name: body.name,
+        email: body.email,
+        newEmail: body.newEmail,
+      });
+      return emailSent;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async sendUpdatePasswordEmail(body: any) {
+    try {
+      const emailSent = await this.emailsService.updatePasswordEmail({
+        name: body.name,
+        email: body.email,
+      });
+      return emailSent;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getOTP(body: verifyOTPDto) {
     try {
       const user = await this.authModel.findOne({ email: body.email });
