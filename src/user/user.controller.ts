@@ -10,6 +10,7 @@ import {
   Req,
   Res,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -19,6 +20,7 @@ import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { Role } from 'src/constant/index.constant';
+import { PaginationDto } from 'src/common/dtos/pagination.dto';
 
 @Controller('user')
 export class UserController {
@@ -29,22 +31,55 @@ export class UserController {
 
   @Get('')
   @UseGuards(JwtAuthGuard)
-  async findAllUser(@Req() req, @Res() res) {
+  async findAllUser(
+    @Req() req,
+    @Res() res,
+    @Query() queryParam: PaginationDto,
+  ) {
     try {
+      let { page, limit, search, role } = queryParam;
+      page = Number(page) || 1;
+      limit = Number(limit) || 10;
+      search = search || '';
+      const skip = (page - 1) * limit;
+
       const userExists = await this.userModel.findById(req.user.id);
       if (userExists.role !== Role.SUPER_ADMIN) {
         return res.status(HttpStatus.UNAUTHORIZED).send({
           message: 'Unauthorized',
-          data: {},
         });
       }
-      const users = await this.userModel.find();
+
+      const query = {
+        name: { $regex: search, $options: 'i' },
+        role: role
+          ? { $in: role.split(',') }
+          : { $in: [Role.USER, Role.ADMIN, Role.SUPER_ADMIN] },
+      };
+
+      const users = await this.userModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .select('-password')
+        .skip(skip)
+        .limit(limit);
+
+      const totalUsers = await this.userModel.countDocuments(query);
+
       return res.status(HttpStatus.OK).send({
         message: 'All users',
-        data: users,
+        data: {
+          total: totalUsers,
+          page: page,
+          limit: limit,
+          totalPages: Math.ceil(totalUsers / limit),
+          users: users,
+        },
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -56,7 +91,6 @@ export class UserController {
       if (user.role !== Role.SUPER_ADMIN) {
         return res.status(HttpStatus.UNAUTHORIZED).send({
           message: 'Unauthorized',
-          data: {},
         });
       }
       const userExists = await this.userModel.findById(id);
@@ -65,7 +99,9 @@ export class UserController {
         data: userExists,
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -82,7 +118,6 @@ export class UserController {
       if (user.role !== Role.SUPER_ADMIN) {
         return res.status(HttpStatus.UNAUTHORIZED).send({
           message: 'Unauthorized',
-          data: {},
         });
       }
       const updatedUser = await this.userModel.findByIdAndUpdate(id, body, {
@@ -93,7 +128,9 @@ export class UserController {
         data: updatedUser,
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -105,16 +142,16 @@ export class UserController {
       if (user.role !== Role.SUPER_ADMIN) {
         return res.status(HttpStatus.UNAUTHORIZED).send({
           message: 'Unauthorized',
-          data: {},
         });
       }
       await this.userModel.findByIdAndUpdate(id, { isDeleted: true });
       return res.status(HttpStatus.OK).send({
         message: 'User deleted successfully',
-        data: {},
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 }
