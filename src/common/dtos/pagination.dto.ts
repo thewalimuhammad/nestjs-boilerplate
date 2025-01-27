@@ -7,6 +7,10 @@ export class PaginationDto {
   search?: string;
 
   @IsOptional()
+  @IsString()
+  role?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   page: number;
