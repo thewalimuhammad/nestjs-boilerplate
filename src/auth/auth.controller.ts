@@ -44,7 +44,6 @@ export class AuthController {
       if (userExist) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'Email already registered.',
-          data: {},
         });
       }
 
@@ -59,16 +58,16 @@ export class AuthController {
         await this.userModel.updateOne({ email: body.email }, body);
         return res.status(HttpStatus.CREATED).send({
           message: 'Verify Pin sent to email please verify email',
-          data: {},
         });
       }
       await this.userModel.create(body);
       return res.status(HttpStatus.CREATED).send({
         message: 'Verify Pin sent to email please verify email',
-        data: {},
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -84,7 +83,6 @@ export class AuthController {
       if (!user) {
         return res.status(HttpStatus.NOT_FOUND).send({
           message: 'User not exits',
-          data: {},
         });
       }
       const isPasswordMatched = await bcrypt.compare(
@@ -94,7 +92,6 @@ export class AuthController {
       if (!isPasswordMatched) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'incorrect credential',
-          data: {},
         });
       }
       const token = this.authService.signToken(user._id.toString());
@@ -103,7 +100,9 @@ export class AuthController {
         data: { token: token },
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -115,17 +114,17 @@ export class AuthController {
       if (!user) {
         return res.status(HttpStatus.NOT_FOUND).send({
           message: 'User Not found',
-          data: {},
         });
       }
       await this.authService.sendForgotEmail(body);
 
       return res.status(HttpStatus.OK).send({
         message: 'User Found and Pin sent to email',
-        data: {},
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -137,21 +136,18 @@ export class AuthController {
       if (!user) {
         return res.status(HttpStatus.NOT_FOUND).send({
           message: 'User not found',
-          data: {},
         });
       }
       const authOTP = await this.authService.getOTP(body);
       if (!authOTP) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'OTP expired',
-          data: {},
         });
       }
 
       if (Number(body.otp) !== authOTP) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'Invalid OTP',
-          data: {},
         });
       }
       const token = this.authService.signToken(user._id.toString());
@@ -164,8 +160,9 @@ export class AuthController {
         data: { token: token },
       });
     } catch (error) {
-      console.log('error', error);
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -176,7 +173,6 @@ export class AuthController {
       if (body.password !== body.confirmPassword) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'New Password and Confirm Password are not matched',
-          data: {},
         });
       }
       await this.userModel.findByIdAndUpdate(req.user.id, {
@@ -184,21 +180,30 @@ export class AuthController {
       });
       return res.status(HttpStatus.OK).send({
         message: 'Password reset successfully',
-        data: {},
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
   @Get('/verify-token')
   @UseGuards(JwtAuthGuard)
   async verifyToken(@Req() req, @Res() res) {
-    const user = await this.userModel.findById(req.user.id).select('-password');
-    return res.status(HttpStatus.OK).send({
-      message: 'Token verified',
-      data: user,
-    });
+    try {
+      const user = await this.userModel
+        .findById(req.user.id)
+        .select('-password');
+      return res.status(HttpStatus.OK).send({
+        message: 'Token verified',
+        data: user,
+      });
+    } catch (error) {
+      return res.status(500).send({
+        error: error.message,
+      });
+    }
   }
 
   @Patch('/update-email')
@@ -210,7 +215,6 @@ export class AuthController {
       if (userExist) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'Email already registered.',
-          data: {},
         });
       }
       const currentUser = await this.userModel.findById(req.user.id);
@@ -221,7 +225,6 @@ export class AuthController {
       if (!isPasswordMatched) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'Incorrect password',
-          data: {},
         });
       }
       await this.authService.sendUpdateEmail({
@@ -237,7 +240,9 @@ export class AuthController {
         data: { user },
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -248,10 +253,11 @@ export class AuthController {
       await this.userModel.findByIdAndUpdate(req.user.id, body);
       return res.status(HttpStatus.OK).send({
         message: 'Profile updated successfully',
-        data: {},
       });
     } catch (error) {
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 
@@ -268,13 +274,11 @@ export class AuthController {
       if (!matched) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'Password not matched',
-          data: {},
         });
       }
       if (body.newPassword !== body.confirmPassword) {
         return res.status(HttpStatus.BAD_REQUEST).send({
           message: 'New Password and Confirm Password are not matched',
-          data: {},
         });
       }
       await this.authService.sendUpdatePasswordEmail({
@@ -285,11 +289,11 @@ export class AuthController {
       await user.save();
       return res.status(HttpStatus.OK).send({
         message: 'Password updated successfully',
-        data: {},
       });
     } catch (error) {
-      console.log('error', error);
-      throw error;
+      return res.status(500).send({
+        error: error.message,
+      });
     }
   }
 }

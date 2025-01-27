@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { OTP_EXPIRY } from 'src/constant/index.constant';
 
 @Schema({ timestamps: true })
 export default class Auth {
@@ -8,7 +9,7 @@ export default class Auth {
   @Prop()
   otp: number;
 
-  @Prop({ default: Date.now, expires: process.env.OTP_EXPIRATION })
+  @Prop({ default: Date.now, expires: OTP_EXPIRY })
   expiresAt: Date;
 }
 
